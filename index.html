@@ -1,86 +1,68 @@
 <html>
 <body>
 <video autoplay controls name="media"></video><br />
-<button onclick="askMeteo()">What is the meteo ?</button><br />
-<button onclick="askTime()">What is the time ?</button><br />
 <button onclick="startListen()">Listen</button><br />
 <input type="text" id="speech" /><br />
 <p id="result"></p>
 <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
 <script>
 var user_name = "Master";
-
+var clientKey = "Bearer 8d2a9405e0264a40a85187d38a5df902";
+var contentType = "application/json";
+var authenticationKey = "277294f4-f882-432a-b9b1-24c16595537a";
 $(function(){
-if ('webkitSpeechRecognition' in window) {
-  var recognition = new webkitSpeechRecognition();
-  recognition.continuous = true;
-  recognition.interimResults = true;
-   recognition.onstart = function( e ) {
-      console.log( e );
-  };
-  var final_transcript = '';
-  recognition.onerror = function(e){
-	console.log(e);
-  };
-  recognition.onresult = function( event ) {
-    var final_transcript = '';
-    for (var i = event.resultIndex; i < event.results.length; ++i) {
-      if (event.results[i].isFinal) {
-        final_transcript += event.results[i][0].transcript;
-      } 
-    }
-    document.getElementById( 'speech' ).value = final_transcript;
-  };
-  recognition.start();
-}
+	if ('webkitSpeechRecognition' in window) {
+		final_transcript = '';
+	
+		var recognition = new webkitSpeechRecognition();
+		recognition.continuous = true;
+		recognition.interimResults = true;
+		recognition.lang = "en-US";
+		
+		recognition.onstart = function() { console.log("started"); }
+		recognition.audiostart = function () { console.log("audio started"); }
+		recognition.audioend = function () { console.log("audio end"); }
+		recognition.onresult = function(event) {
+			var interim_transcript = '';
+			
+			for (var i = event.resultIndex; i < event.results.length; ++i) {
+				if (event.results[i].isFinal) {
+					final_transcript += event.results[i][0].transcript;
+					console.log(final_transcript);
+					send(final_transcript);
+				} else {
+					interim_transcript += event.results[i][0].transcript;
+					$("#speech").val(interim_transcript);
+				}
+			}
+			
+		}
+		recognition.onerror = function(event) { console.log("error : " + event) }
+		recognition.onend = function() { console.log("ended") }
+		recognition.start();
+	}
 });
 
-function addSourceToVideo(element, src, type) {
-    var source = document.createElement('source');
-
-    source.src = src;
-    source.type = type;
-
-    $(element).append(source);
-}
-function askTime(){
-
+function send(speech){
 	$.ajax({
-            type: "GET",
-            cache: false,
-            url: "http://timeapi.org/utc/now"
-        })
-        .success(function (data) {
-            if (data){
-				console.log(data);
-				
-			}                
-        })
-        .fail(function (jqXhr, status, errorThrown) {
-			console.log("failed");
-        });
+		type: "GET",
+		cache: "false",
+		url: "https://api.api.ai/v1/query",
+		data: {
+		"query" : speech,
+		"lang" : "en"
+		},
+		headers: {
+		"Authorization" :  clientKey,
+		"ocp-apim-subscription-key" : authenticationKey,
+		"Content-Type" : contentType
+		}
+	}).success(function(data){
+		console.log(data);
+	}).fail(function(a,b,c){
+		console.log("fail");
+	});
 }
-function askMeteo(){
-	$.ajax({
-            type: "GET",
-            cache: false,
-            url: "http://api.openweathermap.org/data/2.5/weather?q=vaudreuil-dorion&units=metric"
-        })
-        .success(function (data) {
-            if (data){
-				console.log(data);
-				var raw = data.main.temp.toString();
-				var temperature = raw.split(".");
-				var weather = data.weather[0].main;
-				
-				addSourceToVideo($("video"), 'http://translate.google.com/translate_tts?tl=en&q=It is ' + temperature[0] + ' degrees outside and it\'s ' + weather + ', '+ user_name, 'audio/mpeg');
-			}                
-        })
-        .fail(function (jqXhr, status, errorThrown) {
-			console.log("failed");
-        });
-}
-
 </script>
 </body>
 </html>
